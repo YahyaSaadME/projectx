@@ -10,12 +10,14 @@ type MemberWarehouse = {
   name: string;
   email: string;
   warehouseName: string;
+  warehouseLocation: string;
   warehouseStock: WarehouseStockItem[];
 };
 
 type MemberWarehouseManagerProps = {
   organizationId: string;
   members: MemberWarehouse[];
+  canManageAllMembers: boolean;
 };
 
 type MemberStatus = {
@@ -28,7 +30,11 @@ function emptyStatus(): MemberStatus {
   return { isSaving: false, error: "", message: "" };
 }
 
-export default function MemberWarehouseManager({ organizationId, members }: MemberWarehouseManagerProps) {
+export default function MemberWarehouseManager({
+  organizationId,
+  members,
+  canManageAllMembers,
+}: MemberWarehouseManagerProps) {
   const router = useRouter();
   const [memberState, setMemberState] = useState<MemberWarehouse[]>(members);
   const [statusByMemberId, setStatusByMemberId] = useState<Record<string, MemberStatus>>({});
@@ -58,6 +64,12 @@ export default function MemberWarehouseManager({ organizationId, members }: Memb
   function updateWarehouseName(userId: string, warehouseName: string) {
     setMemberState((current) =>
       current.map((member) => (member.userId === userId ? { ...member, warehouseName } : member)),
+    );
+  }
+
+  function updateWarehouseLocation(userId: string, warehouseLocation: string) {
+    setMemberState((current) =>
+      current.map((member) => (member.userId === userId ? { ...member, warehouseLocation } : member)),
     );
   }
 
@@ -119,6 +131,7 @@ export default function MemberWarehouseManager({ organizationId, members }: Memb
       const payload = {
         userId: member.userId,
         warehouseName: member.warehouseName,
+        warehouseLocation: member.warehouseLocation,
         warehouseStock: member.warehouseStock,
       };
 
@@ -128,7 +141,15 @@ export default function MemberWarehouseManager({ organizationId, members }: Memb
         body: JSON.stringify(payload),
       });
 
-      const data = (await response.json()) as { error?: string };
+      const data = (await response.json()) as {
+        error?: string;
+        membership?: {
+          userId?: string;
+          warehouseName?: string;
+          warehouseLocation?: string;
+          warehouseStock?: WarehouseStockItem[];
+        };
+      };
 
       if (!response.ok) {
         setStatus(userId, {
@@ -144,6 +165,24 @@ export default function MemberWarehouseManager({ organizationId, members }: Memb
         error: "",
         message: "Warehouse updated.",
       });
+
+      if (data.membership) {
+        setMemberState((current) =>
+          current.map((candidate) => {
+            if (candidate.userId !== userId) {
+              return candidate;
+            }
+
+            return {
+              ...candidate,
+              warehouseName: data.membership?.warehouseName ?? candidate.warehouseName,
+              warehouseLocation: data.membership?.warehouseLocation ?? candidate.warehouseLocation,
+              warehouseStock: data.membership?.warehouseStock ?? candidate.warehouseStock,
+            };
+          }),
+        );
+      }
+
       router.refresh();
     } catch {
       setStatus(userId, {
@@ -158,9 +197,13 @@ export default function MemberWarehouseManager({ organizationId, members }: Memb
     <section className="rounded-3xl border border-white/10 bg-black/60 p-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="text-xl font-semibold text-white">Member warehouses</h2>
+          <h2 className="text-xl font-semibold text-white">
+            {canManageAllMembers ? "Member warehouses" : "Your warehouse"}
+          </h2>
           <p className="mt-2 text-sm text-zinc-400">
-            Admin can add and manage products/quantities for each member warehouse.
+            {canManageAllMembers
+              ? "Admin can manage warehouse location, products, and quantities for all members."
+              : "Manage your warehouse location, products, and quantities."}
           </p>
         </div>
         <p className="text-sm text-zinc-400">Total stock units: <span className="font-semibold text-white">{totalWarehouseUnits}</span></p>
@@ -185,6 +228,17 @@ export default function MemberWarehouseManager({ organizationId, members }: Memb
                 value={member.warehouseName}
                 onChange={(event) => updateWarehouseName(member.userId, event.target.value)}
                 placeholder="Main warehouse"
+              />
+
+              <label className="mt-3 block text-xs font-medium text-zinc-400" htmlFor={`location-${member.userId}`}>
+                Warehouse location (common)
+              </label>
+              <input
+                id={`location-${member.userId}`}
+                className="mt-1 w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm text-white outline-none"
+                value={member.warehouseLocation}
+                onChange={(event) => updateWarehouseLocation(member.userId, event.target.value)}
+                placeholder="City, Area, Street"
               />
 
               <div className="mt-3 space-y-2">
@@ -233,6 +287,21 @@ export default function MemberWarehouseManager({ organizationId, members }: Memb
                   onClick={() => addStockItem(member.userId)}
                 >
                   Add product
+                </button>
+                <button
+                  className="rounded-xl border border-red-500/30 px-3 py-2 text-xs text-red-200 transition hover:bg-red-500/10"
+                  type="button"
+                  onClick={() =>
+                    setMemberState((current) =>
+                      current.map((candidate) =>
+                        candidate.userId === member.userId
+                          ? { ...candidate, warehouseStock: [] }
+                          : candidate,
+                      ),
+                    )
+                  }
+                >
+                  Clear products
                 </button>
                 <button
                   className="rounded-xl bg-white px-3 py-2 text-xs font-semibold text-black transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-60"

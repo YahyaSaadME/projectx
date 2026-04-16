@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { PublicUser } from "@/lib/users";
 import type { DashboardOrganization } from "@/lib/organizations";
-import { Building2, LayoutDashboard, LayoutList, LogOut, Plus, Shield, UserCircle2, FileSpreadsheet, Inbox } from "lucide-react";
+import { Building2, LayoutDashboard, LayoutList, LogOut, Plus, Shield, UserCircle2, FileSpreadsheet, Inbox, Package } from "lucide-react";
 
 type DashboardSidebarProps = {
   user: PublicUser;
@@ -57,6 +57,12 @@ export default function DashboardSidebar({ user, organizations }: DashboardSideb
             </Link>
             <Link className={navClassName(pathname.endsWith(`/submissions`))} href={`/dashboard/organizations/${activeOrganizationId}/submissions`}>
               <Inbox className="h-4 w-4" /> Received data
+            </Link>
+            <Link className={navClassName(pathname.endsWith(`/warehouse`))} href={`/dashboard/organizations/${activeOrganizationId}/warehouse`}>
+              <Package className="h-4 w-4" /> Warehouse
+            </Link>
+            <Link className={navClassName(pathname.includes(`/dashboard/organizations/${activeOrganizationId}/warehouse/products`))} href={`/dashboard/organizations/${activeOrganizationId}/warehouse/products`}>
+              <FileSpreadsheet className="h-4 w-4" /> Products table
             </Link>
           </nav>
         ) : null}

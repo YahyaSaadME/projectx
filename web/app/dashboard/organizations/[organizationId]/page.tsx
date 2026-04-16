@@ -1,9 +1,6 @@
 import Link from "next/link";
-import InviteMemberForm from "@/components/invite-member-form";
-import MemberWarehouseManager from "@/components/member-warehouse-manager";
 import { getOrganizationPageContext } from "@/lib/organization-page";
 import { listOrganizationForms, listOrganizationMembers, listOrganizationSubmissions } from "@/lib/organizations";
-import { findUsersByIds } from "@/lib/users";
 
 type PageProps = {
   params: Promise<{ organizationId: string }>;
@@ -22,23 +19,9 @@ export default async function OrganizationOverviewPage({ params }: PageProps) {
     listOrganizationSubmissions(organizationId),
     listOrganizationMembers(organizationId),
   ]);
-  const users = await findUsersByIds(members.map((member) => member.userId.toString()));
-  const usersById = new Map(users.map((user) => [user.id, user]));
-  const memberWarehouseData = members.map((member) => {
-    const memberUser = usersById.get(member.userId.toString());
-
-    return {
-      userId: member.userId.toString(),
-      role: member.role,
-      name: memberUser?.name ?? member.userId.toString(),
-      email: memberUser?.email ?? "Unknown email",
-      warehouseName: member.warehouseName ?? "Main warehouse",
-      warehouseStock: member.warehouseStock ?? [],
-    };
-  });
-
-  const totalStockUnits = memberWarehouseData.reduce((sum, member) => {
-    return sum + member.warehouseStock.reduce((stockSum, item) => stockSum + item.quantity, 0);
+  const totalStockUnits = members.reduce((sum, member) => {
+    const warehouseStock = member.warehouseStock ?? [];
+    return sum + warehouseStock.reduce((stockSum, item) => stockSum + item.quantity, 0);
   }, 0);
 
   return (
@@ -78,9 +61,10 @@ export default async function OrganizationOverviewPage({ params }: PageProps) {
         <Link className="rounded-full border border-white/10 px-5 py-3 text-sm font-semibold text-zinc-100 transition hover:bg-white/5" href={`/dashboard/organizations/${organizationId}/submissions`}>
           View submissions
         </Link>
+        <Link className="rounded-full border border-white/10 px-5 py-3 text-sm font-semibold text-zinc-100 transition hover:bg-white/5" href={`/dashboard/organizations/${organizationId}/warehouse`}>
+          Manage warehouse
+        </Link>
       </div>
-
-      {context.isAdmin ? <InviteMemberForm organizationId={organizationId} /> : null}
 
       <section className="grid gap-6 lg:grid-cols-2">
         <div className="rounded-3xl border border-white/10 bg-black/60 p-6">
@@ -108,39 +92,6 @@ export default async function OrganizationOverviewPage({ params }: PageProps) {
         </div>
       </section>
 
-      {context.isAdmin ? (
-        <MemberWarehouseManager organizationId={organizationId} members={memberWarehouseData} />
-      ) : (
-        <section className="rounded-3xl border border-white/10 bg-black/60 p-6">
-          <h2 className="text-xl font-semibold text-white">Member warehouses</h2>
-          <p className="mt-2 text-sm text-zinc-400">Each organization member has one warehouse and product stock quantities.</p>
-
-          <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {memberWarehouseData.map((member) => (
-              <article key={member.userId} className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                <p className="text-sm font-semibold text-white">{member.name}</p>
-                <p className="mt-1 text-xs text-zinc-400">{member.email}</p>
-                <p className="mt-2 text-xs uppercase tracking-[0.2em] text-zinc-500">{member.warehouseName}</p>
-
-                <div className="mt-3 space-y-2">
-                  {member.warehouseStock.map((stockItem, index) => (
-                    <div key={`${member.userId}-${stockItem.product}-${index}`} className="flex items-center justify-between rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm text-zinc-300">
-                      <span>{stockItem.product}</span>
-                      <span className="font-medium text-white">{stockItem.quantity}</span>
-                    </div>
-                  ))}
-
-                  {member.warehouseStock.length === 0 ? <p className="text-sm text-zinc-500">No products in warehouse yet.</p> : null}
-                </div>
-              </article>
-            ))}
-
-            {memberWarehouseData.length === 0 ? (
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-zinc-400">No members found in this organization.</div>
-            ) : null}
-          </div>
-        </section>
-      )}
     </main>
   );
 }

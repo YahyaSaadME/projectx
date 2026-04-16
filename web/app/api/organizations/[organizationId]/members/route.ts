@@ -4,7 +4,6 @@ import { getCurrentUser } from "@/lib/session";
 import {
   createInvite,
   getUserMembership,
-  isOrganizationAdmin,
   listOrganizationMembers,
   updateMemberWarehouse,
   type WarehouseStockItem,
@@ -31,12 +30,16 @@ function parseWarehouseStock(input: WarehouseStockPayload[] | undefined) {
     const product = item.product?.trim();
     const quantity = Number(item.quantity ?? 0);
 
-    if (!product) {
-      return { stock: [] as WarehouseStockItem[], error: "Each stock item needs a product name." };
-    }
-
     if (!Number.isFinite(quantity) || quantity < 0) {
       return { stock: [] as WarehouseStockItem[], error: "Each stock item needs a valid non-negative quantity." };
+    }
+
+    // Allow unsaved blank rows from the UI without blocking update requests.
+    if (!product) {
+      if (quantity > 0) {
+        return { stock: [] as WarehouseStockItem[], error: "Product name is required when quantity is greater than zero." };
+      }
+      continue;
     }
 
     stock.push({ product, quantity });
@@ -67,6 +70,7 @@ export async function GET(_request: Request, { params }: RouteParams) {
       userId: member.userId.toString(),
       role: member.role,
       warehouseName: member.warehouseName ?? "Main warehouse",
+      warehouseLocation: member.warehouseLocation ?? "Common warehouse location",
       warehouseStock: member.warehouseStock ?? [],
       user: users.find((candidate) => candidate.id === member.userId.toString()) ?? null,
     })),
@@ -81,7 +85,13 @@ export async function POST(request: Request, { params }: RouteParams) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  if (!(await isOrganizationAdmin(organizationId, user.id))) {
+  const membership = await getUserMembership(organizationId, user.id);
+
+  if (!membership) {
+    return NextResponse.json({ error: "Organization not found." }, { status: 404 });
+  }
+
+  if (membership.role !== "admin") {
     return NextResponse.json({ error: "Only admins can invite members." }, { status: 403 });
   }
 
@@ -128,13 +138,18 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  if (!(await isOrganizationAdmin(organizationId, user.id))) {
-    return NextResponse.json({ error: "Only admins can update member warehouses." }, { status: 403 });
+  const currentMembership = await getUserMembership(organizationId, user.id);
+
+  if (!currentMembership) {
+    return NextResponse.json({ error: "Organization not found." }, { status: 404 });
   }
+
+  const isAdmin = currentMembership.role === "admin";
 
   const body = (await request.json()) as {
     userId?: string;
     warehouseName?: string;
+    warehouseLocation?: string;
     warehouseStock?: WarehouseStockPayload[];
   };
 
@@ -144,13 +159,19 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     return NextResponse.json({ error: "Target userId is required." }, { status: 400 });
   }
 
+  if (!isAdmin && targetUserId !== user.id) {
+    return NextResponse.json({ error: "You can only update your own warehouse." }, { status: 403 });
+  }
+
   const targetMembership = await getUserMembership(organizationId, targetUserId);
 
   if (!targetMembership) {
     return NextResponse.json({ error: "Member not found in organization." }, { status: 404 });
   }
 
-  const parsedWarehouseStock = parseWarehouseStock(body.warehouseStock);
+  const parsedWarehouseStock = body.warehouseStock
+    ? parseWarehouseStock(body.warehouseStock)
+    : { stock: targetMembership.warehouseStock ?? [] };
 
   if (parsedWarehouseStock.error) {
     return NextResponse.json({ error: parsedWarehouseStock.error }, { status: 400 });
@@ -158,6 +179,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
 
   const updatedMembership = await updateMemberWarehouse(organizationId, targetUserId, {
     warehouseName: body.warehouseName?.trim() ?? targetMembership.warehouseName ?? "Main warehouse",
+    warehouseLocation: body.warehouseLocation?.trim() ?? targetMembership.warehouseLocation ?? "Common warehouse location",
     warehouseStock: parsedWarehouseStock.stock,
   });
 

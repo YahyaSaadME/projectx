@@ -32,6 +32,7 @@ export type MembershipRecord = {
   userId: Types.ObjectId;
   role: OrganizationRole;
   warehouseName: string;
+  warehouseLocation: string;
   warehouseStock: WarehouseStockItem[];
   score: number;
   assignedCount: number;
@@ -111,6 +112,10 @@ function normalizeWarehouseName(value: string) {
   return value.trim() || "Main warehouse";
 }
 
+function normalizeWarehouseLocation(value: string) {
+  return value.trim() || "Common warehouse location";
+}
+
 function normalizeWarehouseStock(input: WarehouseStockItem[]) {
   return input
     .map((item) => ({
@@ -149,6 +154,7 @@ const MembershipSchema = new Schema<MembershipRecord>(
     userId: { type: Schema.Types.ObjectId, required: true, ref: "User" },
     role: { type: String, required: true, enum: ["admin", "member"], default: "member" },
     warehouseName: { type: String, required: true, default: "Main warehouse", trim: true },
+    warehouseLocation: { type: String, required: true, default: "Common warehouse location", trim: true },
     warehouseStock: { type: [WarehouseStockItemSchema], required: true, default: [] },
     score: { type: Number, required: true, default: 0 },
     assignedCount: { type: Number, required: true, default: 0 },
@@ -159,6 +165,26 @@ const MembershipSchema = new Schema<MembershipRecord>(
 );
 
 MembershipSchema.index({ organizationId: 1, userId: 1 }, { unique: true });
+
+function ensureMembershipSchemaCompatibility(existingModel: Model<MembershipRecord>) {
+  if (!existingModel.schema.path("warehouseName")) {
+    existingModel.schema.add({
+      warehouseName: { type: String, required: true, default: "Main warehouse", trim: true },
+    });
+  }
+
+  if (!existingModel.schema.path("warehouseLocation")) {
+    existingModel.schema.add({
+      warehouseLocation: { type: String, required: true, default: "Common warehouse location", trim: true },
+    });
+  }
+
+  if (!existingModel.schema.path("warehouseStock")) {
+    existingModel.schema.add({
+      warehouseStock: { type: [WarehouseStockItemSchema], required: true, default: [] },
+    });
+  }
+}
 
 const InviteSchema = new Schema<InviteRecord>(
   {
@@ -215,9 +241,14 @@ const OrganizationModel: Model<OrganizationRecord> =
   (mongoose.models.Organization as Model<OrganizationRecord> | undefined) ??
   mongoose.model<OrganizationRecord>("Organization", OrganizationSchema);
 
+const existingMembershipModel = mongoose.models.Membership as Model<MembershipRecord> | undefined;
+
+if (existingMembershipModel) {
+  ensureMembershipSchemaCompatibility(existingMembershipModel);
+}
+
 const MembershipModel: Model<MembershipRecord> =
-  (mongoose.models.Membership as Model<MembershipRecord> | undefined) ??
-  mongoose.model<MembershipRecord>("Membership", MembershipSchema);
+  existingMembershipModel ?? mongoose.model<MembershipRecord>("Membership", MembershipSchema);
 
 const InviteModel: Model<InviteRecord> =
   (mongoose.models.Invite as Model<InviteRecord> | undefined) ?? mongoose.model<InviteRecord>("Invite", InviteSchema);
@@ -334,6 +365,7 @@ export async function getUserMembership(organizationId: string, userId: string) 
   return {
     ...membership,
     warehouseName: membership.warehouseName ?? "Main warehouse",
+    warehouseLocation: membership.warehouseLocation ?? "Common warehouse location",
     warehouseStock: membership.warehouseStock ?? [],
   };
 }
@@ -358,6 +390,7 @@ export async function addMembership(input: {
       },
       $setOnInsert: {
         warehouseName: "Main warehouse",
+        warehouseLocation: "Common warehouse location",
         warehouseStock: [],
         score: input.role === "admin" ? 100 : 0,
         assignedCount: 0,
@@ -404,6 +437,7 @@ export async function listOrganizationMembers(organizationId: string) {
   return members.map((member) => ({
     ...member,
     warehouseName: member.warehouseName ?? "Main warehouse",
+    warehouseLocation: member.warehouseLocation ?? "Common warehouse location",
     warehouseStock: member.warehouseStock ?? [],
   }));
 }
@@ -413,6 +447,7 @@ export async function updateMemberWarehouse(
   userId: string,
   input: {
     warehouseName: string;
+    warehouseLocation: string;
     warehouseStock: WarehouseStockItem[];
   },
 ) {
@@ -423,16 +458,26 @@ export async function updateMemberWarehouse(
     {
       $set: {
         warehouseName: normalizeWarehouseName(input.warehouseName),
+        warehouseLocation: normalizeWarehouseLocation(input.warehouseLocation),
         warehouseStock: normalizeWarehouseStock(input.warehouseStock),
         updatedAt: new Date(),
       },
     },
-    { new: true },
+    { new: true, runValidators: true },
   )
     .lean<MembershipRecord>()
     .exec();
 
-  return updatedMembership;
+  if (!updatedMembership) {
+    return null;
+  }
+
+  return {
+    ...updatedMembership,
+    warehouseName: updatedMembership.warehouseName ?? "Main warehouse",
+    warehouseLocation: updatedMembership.warehouseLocation ?? "Common warehouse location",
+    warehouseStock: updatedMembership.warehouseStock ?? [],
+  };
 }
 
 export async function createInvite(input: {
