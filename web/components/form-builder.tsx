@@ -1,12 +1,18 @@
 "use client";
 
 import { Plus, Trash2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { FormField, FormFieldType } from "@/lib/organizations";
 
 type FormBuilderProps = {
   organizationId: string;
+  isEditMode?: boolean;
+  formId?: string;
+  initialName?: string;
+  initialTitle?: string;
+  initialDescription?: string;
+  initialFields?: FormField[];
 };
 
 const fieldTypes: FormFieldType[] = ["text", "email", "textarea", "select"];
@@ -22,68 +28,102 @@ function createField(): FormField {
   };
 }
 
-export default function FormBuilder({ organizationId }: FormBuilderProps) {
+export default function FormBuilder({
+  organizationId,
+  isEditMode = false,
+  formId,
+  initialName = "Contact form",
+  initialTitle = "Contact us",
+  initialDescription = "Public form shared with anyone.",
+  initialFields,
+}: FormBuilderProps) {
   const router = useRouter();
-  const [name, setName] = useState("Contact form");
-  const [title, setTitle] = useState("Contact us");
-  const [description, setDescription] = useState("Public form shared with anyone.");
-  const [fields, setFields] = useState<FormField[]>([
-    { id: "name", label: "Name", type: "text", required: true, placeholder: "Full name" },
-    { id: "email", label: "Email", type: "email", required: true, placeholder: "you@example.com" },
-    { id: "message", label: "Message", type: "textarea", required: true, placeholder: "Write your message" },
-  ]);
+  const [name, setName] = useState(initialName);
+  const [title, setTitle] = useState(initialTitle);
+  const [description, setDescription] = useState(initialDescription);
+  const [fields, setFields] = useState<FormField[]>(
+    initialFields ?? [
+      { id: "name", label: "Name", type: "text", required: true, placeholder: "Full name" },
+      { id: "email", label: "Email", type: "email", required: true, placeholder: "you@example.com" },
+      { id: "message", label: "Message", type: "textarea", required: true, placeholder: "Any extra details" },
+    ],
+  );
   const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const canSubmit = useMemo(() => name.trim().length > 0 && title.trim().length > 0, [name, title]);
+  const canSubmit = name.trim().length > 0 && title.trim().length > 0;
 
   function updateField(index: number, updates: Partial<FormField>) {
-    setFields((current) => current.map((field, fieldIndex) => (fieldIndex === index ? { ...field, ...updates } : field)));
+    setFields((current) =>
+      current.map((field, i) => (i === index ? { ...field, ...updates } : field)),
+    );
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
-    setMessage("");
+    setSuccessMessage("");
     setIsSubmitting(true);
 
     try {
-      const response = await fetch(`/api/organizations/${organizationId}/forms`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, title, description, fields }),
-      });
-      const payload = (await response.json()) as { error?: string };
+      const url = isEditMode ? `/api/forms/${formId}` : `/api/organizations/${organizationId}/forms`;
+      const method = isEditMode ? "PATCH" : "POST";
 
+      const response = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name,
+          title,
+          description,
+          fields,
+        }),
+      });
+
+      const payload = (await response.json()) as { error?: string };
       if (!response.ok) {
-        setError(payload.error ?? "Could not create form.");
+        setError(payload.error ?? `Could not ${isEditMode ? "update" : "create"} form.`);
         return;
       }
 
-      setMessage("Form created.");
+      setSuccessMessage(`Form ${isEditMode ? "updated" : "created"}.`);
       router.refresh();
     } catch {
-      setError("Form creation failed.");
+      setError(`Form ${isEditMode ? "update" : "creation"} failed.`);
     } finally {
       setIsSubmitting(false);
     }
   }
 
   return (
-    <form className="space-y-5 rounded-3xl border border-white/10 bg-black/60 p-6 shadow-xl shadow-black/30" onSubmit={handleSubmit}>
+    <form
+      className="space-y-6 rounded-3xl border border-white/10 bg-black/60 p-6 shadow-xl shadow-black/30"
+      onSubmit={handleSubmit}
+    >
+      {/* Basic info */}
       <div className="grid gap-4 md:grid-cols-2">
         <div>
           <label className="text-sm font-medium text-zinc-300" htmlFor="form-name">
             Form name
           </label>
-          <input className="mt-2 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-500 focus:border-white/30" id="form-name" value={name} onChange={(event) => setName(event.target.value)} />
+          <input
+            className="mt-2 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-500 focus:border-white/30"
+            id="form-name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
         </div>
         <div>
           <label className="text-sm font-medium text-zinc-300" htmlFor="form-title">
-            Title
+            Public title
           </label>
-          <input className="mt-2 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-500 focus:border-white/30" id="form-title" value={title} onChange={(event) => setTitle(event.target.value)} />
+          <input
+            className="mt-2 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-500 focus:border-white/30"
+            id="form-title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+          />
         </div>
       </div>
 
@@ -91,43 +131,95 @@ export default function FormBuilder({ organizationId }: FormBuilderProps) {
         <label className="text-sm font-medium text-zinc-300" htmlFor="form-description">
           Description
         </label>
-        <textarea className="mt-2 min-h-24 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-500 focus:border-white/30" id="form-description" value={description} onChange={(event) => setDescription(event.target.value)} />
+        <textarea
+          className="mt-2 min-h-20 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-500 focus:border-white/30"
+          id="form-description"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+        />
       </div>
 
-      <div className="space-y-4 rounded-2xl border border-white/10 bg-white/5 p-4">
+      {/* Form fields */}
+      <div className="space-y-4 rounded-2xl border border-white/10 bg-white/5 p-5">
         <div className="flex items-center justify-between">
-          <p className="text-sm font-medium text-white">Fields</p>
-          <button className="inline-flex items-center gap-2 rounded-full border border-white/10 px-3 py-2 text-xs text-zinc-300 transition hover:bg-white/5" type="button" onClick={() => setFields((current) => [...current, createField()])}>
+          <p className="text-sm font-semibold text-white">Fields</p>
+          <button
+            className="inline-flex items-center gap-1.5 rounded-full border border-white/10 px-3 py-1.5 text-xs text-zinc-300 transition hover:bg-white/5"
+            type="button"
+            onClick={() => setFields((f) => [...f, createField()])}
+          >
             <Plus className="h-3.5 w-3.5" /> Add field
           </button>
         </div>
 
-        {fields.map((field, index) => (
-          <div key={field.id} className="grid gap-3 rounded-2xl border border-white/10 bg-black/40 p-4 md:grid-cols-[1.1fr_0.8fr_0.6fr_0.8fr_auto] md:items-center">
-            <input className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none" value={field.label} onChange={(event) => updateField(index, { label: event.target.value })} />
-            <select className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none" value={field.type} onChange={(event) => updateField(index, { type: event.target.value as FormFieldType })}>
-              {fieldTypes.map((type) => (
-                <option key={type} value={type}>
-                  {type}
-                </option>
-              ))}
-            </select>
-            <input className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none" value={field.placeholder ?? ""} onChange={(event) => updateField(index, { placeholder: event.target.value })} placeholder="Placeholder" />
-            <label className="flex items-center gap-2 text-sm text-zinc-300">
-              <input checked={field.required} onChange={(event) => updateField(index, { required: event.target.checked })} type="checkbox" /> Required
-            </label>
-            <button className="inline-flex items-center justify-center rounded-xl border border-white/10 px-3 py-2 text-zinc-300 transition hover:bg-white/5" type="button" onClick={() => setFields((current) => current.filter((_, currentIndex) => currentIndex !== index))}>
-              <Trash2 className="h-4 w-4" />
-            </button>
-          </div>
-        ))}
+        <div className="space-y-3">
+          {fields.map((field, index) => (
+            <div
+              key={field.id}
+              className="grid gap-3 rounded-2xl border border-white/10 bg-black/40 p-4 md:grid-cols-[1.2fr_0.8fr_0.9fr_auto_auto] md:items-center"
+            >
+              <input
+                className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none"
+                value={field.label}
+                onChange={(e) => updateField(index, { label: e.target.value })}
+                placeholder="Label"
+              />
+              <select
+                className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none"
+                value={field.type}
+                onChange={(e) => updateField(index, { type: e.target.value as FormFieldType })}
+              >
+                {fieldTypes.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+              <input
+                className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none"
+                value={field.placeholder ?? ""}
+                onChange={(e) => updateField(index, { placeholder: e.target.value })}
+                placeholder="Placeholder"
+              />
+              <label className="flex items-center gap-2 text-xs text-zinc-400">
+                <input
+                  checked={field.required}
+                  onChange={(e) => updateField(index, { required: e.target.checked })}
+                  type="checkbox"
+                />
+                Required
+              </label>
+              <button
+                className="inline-flex items-center justify-center rounded-xl border border-white/10 p-2 text-zinc-400 transition hover:bg-white/5 hover:text-red-400"
+                type="button"
+                onClick={() => setFields((f) => f.filter((_, i) => i !== index))}
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </div>
+          ))}
+        </div>
       </div>
 
-      {error ? <p className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{error}</p> : null}
-      {message ? <p className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">{message}</p> : null}
+      {error && (
+        <p className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+          {error}
+        </p>
+      )}
+      {successMessage && (
+        <p className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
+          {successMessage}
+        </p>
+      )}
 
-      <button className="rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-black transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-60" disabled={!canSubmit || isSubmitting} type="submit">
-        {isSubmitting ? "Saving..." : "Save form"}
+      <button
+        className="rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-black transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-60"
+        disabled={!canSubmit || isSubmitting}
+        type="submit"
+      >
+        {isSubmitting
+          ? `${isEditMode ? "Updating" : "Saving"}...`
+          : `${isEditMode ? "Update" : "Save"} form`}
       </button>
     </form>
   );

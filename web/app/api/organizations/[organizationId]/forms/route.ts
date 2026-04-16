@@ -7,12 +7,13 @@ import {
   listOrganizationForms,
   type FormField,
 } from "@/lib/organizations";
+import { paginateArray, parsePositiveInt } from "@/lib/pagination";
 
 type RouteParams = {
   params: Promise<{ organizationId: string }>;
 };
 
-export async function GET(_request: Request, { params }: RouteParams) {
+export async function GET(request: Request, { params }: RouteParams) {
   const { organizationId } = await params;
   const user = await getCurrentUser();
 
@@ -27,7 +28,26 @@ export async function GET(_request: Request, { params }: RouteParams) {
   }
 
   const forms = await listOrganizationForms(organizationId);
-  return NextResponse.json({ forms });
+  const requestUrl = new URL(request.url);
+  const query = (requestUrl.searchParams.get("q") ?? "").trim().toLowerCase();
+  const page = parsePositiveInt(requestUrl.searchParams.get("page") ?? "", 1, 500);
+  const requestedPageSize = requestUrl.searchParams.get("pageSize");
+
+  const filteredForms = query
+    ? forms.filter((form) => `${form.name} ${form.title} ${form.slug}`.toLowerCase().includes(query))
+    : forms;
+  const pageSize = requestedPageSize ? parsePositiveInt(requestedPageSize, 20, 100) : Math.max(filteredForms.length, 1);
+  const paginatedForms = paginateArray(filteredForms, page, pageSize);
+
+  return NextResponse.json({
+    forms: paginatedForms.items,
+    pagination: {
+      page: paginatedForms.page,
+      pageSize: paginatedForms.pageSize,
+      total: paginatedForms.total,
+      totalPages: paginatedForms.totalPages,
+    },
+  });
 }
 
 export async function POST(request: Request, { params }: RouteParams) {

@@ -11,6 +11,9 @@ export type UserRecord = {
   authProvider: "local" | "google";
   googleId?: string;
   avatarUrl?: string;
+  googleAccessToken?: string;
+  googleRefreshToken?: string;
+  googleTokenExpiry?: Date;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -47,6 +50,9 @@ const UserSchema = new Schema<UserRecord>(
     authProvider: { type: String, required: true, default: "local", enum: ["local", "google"] },
     googleId: { type: String },
     avatarUrl: { type: String },
+    googleAccessToken: { type: String },
+    googleRefreshToken: { type: String },
+    googleTokenExpiry: { type: Date },
   },
   {
     timestamps: true,
@@ -97,6 +103,9 @@ export async function createGoogleUser(input: {
   email: string;
   googleId: string;
   avatarUrl?: string;
+  googleAccessToken?: string;
+  googleRefreshToken?: string;
+  googleTokenExpiry?: Date;
 }) {
   await connectMongoose();
   const createdUser = await UserModel.create({
@@ -108,6 +117,9 @@ export async function createGoogleUser(input: {
     authProvider: "google",
     googleId: input.googleId,
     avatarUrl: input.avatarUrl,
+    googleAccessToken: input.googleAccessToken,
+    googleRefreshToken: input.googleRefreshToken,
+    googleTokenExpiry: input.googleTokenExpiry,
   });
 
   return createdUser.toObject() as UserRecord;
@@ -117,6 +129,9 @@ export async function linkGoogleAccount(input: {
   email: string;
   googleId: string;
   avatarUrl?: string;
+  googleAccessToken?: string;
+  googleRefreshToken?: string;
+  googleTokenExpiry?: Date;
 }) {
   await connectMongoose();
   return UserModel.findOneAndUpdate(
@@ -126,6 +141,9 @@ export async function linkGoogleAccount(input: {
         authProvider: "google",
         googleId: input.googleId,
         avatarUrl: input.avatarUrl,
+        ...(input.googleAccessToken ? { googleAccessToken: input.googleAccessToken } : {}),
+        ...(input.googleRefreshToken ? { googleRefreshToken: input.googleRefreshToken } : {}),
+        ...(input.googleTokenExpiry ? { googleTokenExpiry: input.googleTokenExpiry } : {}),
         otpVerified: true,
       },
     },
@@ -150,4 +168,35 @@ export async function verifyUserOtp(email: string) {
 
 export function asPublicUser(user: UserRecord) {
   return toPublicUser(user);
+}
+
+export async function updateGoogleTokens(
+  userId: string,
+  input: {
+    googleAccessToken?: string;
+    googleRefreshToken?: string;
+    googleTokenExpiry?: Date | null;
+  },
+) {
+  await connectMongoose();
+
+  const setPayload: Partial<Pick<UserRecord, "googleAccessToken" | "googleRefreshToken" | "googleTokenExpiry">> = {};
+
+  if (input.googleAccessToken) {
+    setPayload.googleAccessToken = input.googleAccessToken;
+  }
+
+  if (input.googleRefreshToken) {
+    setPayload.googleRefreshToken = input.googleRefreshToken;
+  }
+
+  if (input.googleTokenExpiry) {
+    setPayload.googleTokenExpiry = input.googleTokenExpiry;
+  }
+
+  if (Object.keys(setPayload).length === 0) {
+    return;
+  }
+
+  await UserModel.updateOne({ _id: userId }, { $set: setPayload }).exec();
 }

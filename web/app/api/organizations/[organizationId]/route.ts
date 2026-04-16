@@ -42,7 +42,10 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     return NextResponse.json({ error: "Only admins can update an organization." }, { status: 403 });
   }
 
-  const body = (await request.json()) as { name?: string; description?: string };
+  const body = (await request.json()) as {
+    name?: string;
+    description?: string;
+  };
 
   const updated = await updateOrganization(organizationId, {
     name: body.name?.trim() ?? "",

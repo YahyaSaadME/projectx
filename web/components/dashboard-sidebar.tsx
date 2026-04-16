@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { PublicUser } from "@/lib/users";
 import type { DashboardOrganization } from "@/lib/organizations";
-import { Building2, LayoutDashboard, LogOut, Plus, Shield } from "lucide-react";
+import { Building2, LayoutDashboard, LayoutList, LogOut, Plus, Shield, UserCircle2, FileSpreadsheet, Inbox } from "lucide-react";
 
 type DashboardSidebarProps = {
   user: PublicUser;
@@ -20,25 +20,46 @@ function navClassName(active: boolean) {
 
 export default function DashboardSidebar({ user, organizations }: DashboardSidebarProps) {
   const pathname = usePathname();
+  const organizationMatch = pathname.match(/\/dashboard\/organizations\/([a-f0-9]{24})(?:\/|$)/i);
+  const activeOrganizationId = organizationMatch?.[1] ?? null;
 
   return (
     <aside className="border-b border-white/10 bg-black/90 px-4 py-5 md:min-h-screen md:border-b-0 md:border-r md:border-white/10">
       <div className="flex h-full flex-col gap-6">
         <div className="rounded-3xl border border-white/10 bg-white/5 p-4 shadow-lg shadow-black/20">
           <p className="text-xs uppercase tracking-[0.3em] text-zinc-400">Workspace</p>
-          <h2 className="mt-2 text-xl font-semibold text-white">Organization Hub</h2>
+          <h2 className="mt-2 text-xl font-semibold text-white">Project X</h2>
           <p className="mt-2 text-sm text-zinc-400">{user.name}</p>
           <p className="text-sm text-zinc-500">{user.email}</p>
         </div>
 
         <nav className="space-y-2">
+          <div className="px-2 text-xs uppercase tracking-[0.3em] text-zinc-500">Pages</div>
           <Link className={navClassName(pathname === "/dashboard")} href="/dashboard">
             <LayoutDashboard className="h-4 w-4" /> Overview
           </Link>
           <Link className={navClassName(pathname.includes("/dashboard/organizations/new"))} href="/dashboard/organizations/new">
             <Plus className="h-4 w-4" /> New organization
           </Link>
+          <Link className={navClassName(pathname === "/profile")} href="/profile">
+            <UserCircle2 className="h-4 w-4" /> Profile
+          </Link>
         </nav>
+
+        {activeOrganizationId ? (
+          <nav className="space-y-2">
+            <div className="px-2 text-xs uppercase tracking-[0.3em] text-zinc-500">Organization sections</div>
+            <Link className={navClassName(pathname.endsWith(`/dashboard/organizations/${activeOrganizationId}`))} href={`/dashboard/organizations/${activeOrganizationId}`}>
+              <LayoutList className="h-4 w-4" /> Overview
+            </Link>
+            <Link className={navClassName(pathname.includes(`/dashboard/organizations/${activeOrganizationId}/forms`))} href={`/dashboard/organizations/${activeOrganizationId}/forms`}>
+              <FileSpreadsheet className="h-4 w-4" /> Manage forms
+            </Link>
+            <Link className={navClassName(pathname.endsWith(`/submissions`))} href={`/dashboard/organizations/${activeOrganizationId}/submissions`}>
+              <Inbox className="h-4 w-4" /> Received data
+            </Link>
+          </nav>
+        ) : null}
 
         <div className="flex-1 space-y-3">
           <div className="flex items-center gap-2 px-2 text-xs uppercase tracking-[0.3em] text-zinc-500">
@@ -47,7 +68,7 @@ export default function DashboardSidebar({ user, organizations }: DashboardSideb
           <div className="space-y-2">
             {organizations.length === 0 ? (
               <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-zinc-400">
-                Create an organization to start inviting members and publishing forms.
+                Create an organization to start publishing forms.
               </div>
             ) : null}
             {organizations.map((organization) => {

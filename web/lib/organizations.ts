@@ -1,8 +1,13 @@
-import mongoose, { Schema, type Model, type Types } from "mongoose";
+import mongoose, { Schema, isValidObjectId, type Model, type Types } from "mongoose";
 import { connectMongoose } from "@/lib/mongoose";
 import { deleteRedisValue, readRedisValue, writeRedisValue } from "@/lib/redis";
 
 export type OrganizationRole = "admin" | "member";
+
+export type WarehouseStockItem = {
+  product: string;
+  quantity: number;
+};
 
 export type DashboardOrganization = {
   _id: string;
@@ -26,6 +31,8 @@ export type MembershipRecord = {
   organizationId: Types.ObjectId;
   userId: Types.ObjectId;
   role: OrganizationRole;
+  warehouseName: string;
+  warehouseStock: WarehouseStockItem[];
   score: number;
   assignedCount: number;
   lastAssignedAt?: Date;
@@ -100,6 +107,19 @@ function normalizeText(value: string) {
   return value.trim();
 }
 
+function normalizeWarehouseName(value: string) {
+  return value.trim() || "Main warehouse";
+}
+
+function normalizeWarehouseStock(input: WarehouseStockItem[]) {
+  return input
+    .map((item) => ({
+      product: item.product.trim(),
+      quantity: Math.max(0, Number(item.quantity) || 0),
+    }))
+    .filter((item) => item.product.length > 0);
+}
+
 function buildUniqueSlug(baseValue: string) {
   const baseSlug = slugify(baseValue) || "organization";
   return `${baseSlug}-${randomSuffix()}`;
@@ -115,11 +135,21 @@ const OrganizationSchema = new Schema<OrganizationRecord>(
   { timestamps: true, collection: "organizations" },
 );
 
+const WarehouseStockItemSchema = new Schema<WarehouseStockItem>(
+  {
+    product: { type: String, required: true, trim: true },
+    quantity: { type: Number, required: true, default: 0, min: 0 },
+  },
+  { _id: false },
+);
+
 const MembershipSchema = new Schema<MembershipRecord>(
   {
     organizationId: { type: Schema.Types.ObjectId, required: true, ref: "Organization" },
     userId: { type: Schema.Types.ObjectId, required: true, ref: "User" },
     role: { type: String, required: true, enum: ["admin", "member"], default: "member" },
+    warehouseName: { type: String, required: true, default: "Main warehouse", trim: true },
+    warehouseStock: { type: [WarehouseStockItemSchema], required: true, default: [] },
     score: { type: Number, required: true, default: 0 },
     assignedCount: { type: Number, required: true, default: 0 },
     lastAssignedAt: { type: Date },
@@ -222,7 +252,10 @@ export async function createOrganization(input: {
 
 export async function updateOrganization(
   organizationId: string,
-  input: { name: string; description: string },
+  input: {
+    name: string;
+    description: string;
+  },
 ) {
   await connectMongoose();
   const updated = await OrganizationModel.findByIdAndUpdate(
@@ -253,6 +286,10 @@ export async function deleteOrganization(organizationId: string) {
 }
 
 export async function getOrganizationById(organizationId: string) {
+  if (!isValidObjectId(organizationId)) {
+    return null;
+  }
+
   await connectMongoose();
   return OrganizationModel.findById(organizationId).lean<OrganizationRecord>().exec();
 }
@@ -283,8 +320,22 @@ export async function listUserOrganizations(userId: string): Promise<DashboardOr
 }
 
 export async function getUserMembership(organizationId: string, userId: string) {
+  if (!isValidObjectId(organizationId) || !isValidObjectId(userId)) {
+    return null;
+  }
+
   await connectMongoose();
-  return MembershipModel.findOne({ organizationId, userId }).lean<MembershipRecord>().exec();
+  const membership = await MembershipModel.findOne({ organizationId, userId }).lean<MembershipRecord>().exec();
+
+  if (!membership) {
+    return null;
+  }
+
+  return {
+    ...membership,
+    warehouseName: membership.warehouseName ?? "Main warehouse",
+    warehouseStock: membership.warehouseStock ?? [],
+  };
 }
 
 export async function isOrganizationAdmin(organizationId: string, userId: string) {
@@ -306,6 +357,8 @@ export async function addMembership(input: {
         acceptedAt: new Date(),
       },
       $setOnInsert: {
+        warehouseName: "Main warehouse",
+        warehouseStock: [],
         score: input.role === "admin" ? 100 : 0,
         assignedCount: 0,
       },
@@ -346,7 +399,40 @@ export async function listRankedOrganizationMembers(organizationId: string) {
 
 export async function listOrganizationMembers(organizationId: string) {
   await connectMongoose();
-  return MembershipModel.find({ organizationId }).lean<MembershipRecord[]>().exec();
+  const members = await MembershipModel.find({ organizationId }).lean<MembershipRecord[]>().exec();
+
+  return members.map((member) => ({
+    ...member,
+    warehouseName: member.warehouseName ?? "Main warehouse",
+    warehouseStock: member.warehouseStock ?? [],
+  }));
+}
+
+export async function updateMemberWarehouse(
+  organizationId: string,
+  userId: string,
+  input: {
+    warehouseName: string;
+    warehouseStock: WarehouseStockItem[];
+  },
+) {
+  await connectMongoose();
+
+  const updatedMembership = await MembershipModel.findOneAndUpdate(
+    { organizationId, userId },
+    {
+      $set: {
+        warehouseName: normalizeWarehouseName(input.warehouseName),
+        warehouseStock: normalizeWarehouseStock(input.warehouseStock),
+        updatedAt: new Date(),
+      },
+    },
+    { new: true },
+  )
+    .lean<MembershipRecord>()
+    .exec();
+
+  return updatedMembership;
 }
 
 export async function createInvite(input: {
@@ -442,7 +528,13 @@ export async function createContactForm(input: {
 
 export async function updateContactForm(
   formId: string,
-  input: { name: string; title: string; description: string; fields: FormField[]; isActive: boolean },
+  input: {
+    name: string;
+    title: string;
+    description: string;
+    fields: FormField[];
+    isActive: boolean;
+  },
 ) {
   await connectMongoose();
   const existing = await ContactFormModel.findById(formId).lean<ContactFormRecord>().exec();

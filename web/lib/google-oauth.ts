@@ -14,7 +14,7 @@ function getGoogleCredentials() {
 
 export function getGoogleOAuthClient() {
   const { clientId, clientSecret, redirectUri } = getGoogleCredentials();
-  return new OAuth2Client(clientId, clientSecret, redirectUri);
+  return new OAuth2Client({ clientId, clientSecret, redirectUri });
 }
 
 export function buildGoogleAuthUrl(mode: "login" | "signup") {
@@ -23,7 +23,11 @@ export function buildGoogleAuthUrl(mode: "login" | "signup") {
   return client.generateAuthUrl({
     access_type: "offline",
     prompt: "consent",
-    scope: ["openid", "email", "profile"],
+    scope: [
+      "openid",
+      "email",
+      "profile",
+    ],
     state: mode,
   });
 }
@@ -52,5 +56,8 @@ export async function verifyGoogleCode(code: string) {
     email: payload.email,
     name: payload.name ?? payload.given_name ?? payload.email,
     avatarUrl: payload.picture ?? undefined,
+    googleAccessToken: tokens.access_token ?? undefined,
+    googleRefreshToken: tokens.refresh_token ?? undefined,
+    googleTokenExpiry: tokens.expiry_date ? new Date(tokens.expiry_date) : undefined,
   };
 }

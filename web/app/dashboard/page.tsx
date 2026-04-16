@@ -19,7 +19,7 @@ export default async function DashboardPage() {
           <p className="text-xs uppercase tracking-[0.3em] text-zinc-400">Dashboard</p>
           <h1 className="mt-3 text-4xl font-semibold tracking-tight text-white">Welcome back, {user.name}</h1>
           <p className="mt-4 max-w-2xl text-sm leading-7 text-zinc-400">
-            Create organizations, invite members by unique email-based links, build public contact forms, and review all submissions from one place.
+            Create organizations, build public contact forms, and review all submissions from one place.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <Link className="rounded-full bg-white px-5 py-3 text-sm font-semibold text-black transition hover:bg-zinc-200" href="/dashboard/organizations/new">
@@ -55,7 +55,7 @@ export default async function DashboardPage() {
             <p className="text-xs uppercase tracking-[0.3em] text-zinc-400">Your organizations</p>
             <h2 className="mt-2 text-2xl font-semibold text-white">Manage the workspace</h2>
           </div>
-          <p className="text-sm text-zinc-400">Open any organization to manage members and forms</p>
+          <p className="text-sm text-zinc-400">Open any organization to manage forms and submissions</p>
         </div>
 
         <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">

@@ -32,6 +32,8 @@ services:
       context: ./web
       dockerfile: Dockerfile
     restart: unless-stopped
+    env_file:
+      - ./web/.env.local
     depends_on:
       mongo:
         condition: service_healthy
@@ -41,7 +43,7 @@ services:
       NODE_ENV: production
       PORT: 3000
       HOSTNAME: 0.0.0.0
-      MONGODB_URI: mongodb://mongo:27017/mongo-auth-dashboard
+      MONGODB_URI: mongodb://mongo:27017/hackstrom
       REDIS_URL: redis://redis:6379
       JWT_SECRET: change-me-in-production
       NEXT_PUBLIC_APP_URL: http://localhost:3000

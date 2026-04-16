@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/session";
 import { acceptInvite, getInviteByToken } from "@/lib/organizations";
+import { getCurrentUser } from "@/lib/session";
 
 type RouteParams = {
   params: Promise<{ token: string }>;

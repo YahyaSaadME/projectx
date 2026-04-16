@@ -8,7 +8,7 @@ export default function NewOrganizationPage() {
         <p className="text-xs uppercase tracking-[0.3em] text-zinc-400">New organization</p>
         <h1 className="mt-3 text-4xl font-semibold tracking-tight text-white">Create a workspace</h1>
         <p className="mt-3 max-w-3xl text-sm leading-7 text-zinc-400">
-          The creator becomes the organizer and can manage members, forms, and submissions.
+          The creator becomes the organizer and can manage forms and submissions.
         </p>
       </section>
 

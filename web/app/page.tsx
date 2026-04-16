@@ -2,22 +2,9 @@ import Link from "next/link";
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top,_#2b2b2b,_#111111_45%,_#080808_100%)] text-zinc-100">
+    <main  style={{color:"gray"}} className="min-h-screen bg-[radial-gradient(circle_at_top,_#2b2b2b,_#111111_45%,_#080808_100%)] text-zinc-100">
       <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col justify-between px-6 py-8 md:px-10 lg:px-12">
-        <header className="flex items-center justify-between border-b border-white/10 pb-6">
-          <div>
-            <p className="text-xs uppercase tracking-[0.3em] text-zinc-400">Mongo Auth Starter</p>
-            <h1 className="mt-2 text-xl font-semibold text-white">Black and Gray Dashboard</h1>
-          </div>
-          <div className="flex gap-3 text-sm">
-            <Link className="rounded-full border border-white/15 px-4 py-2 text-zinc-200 transition hover:border-white/30 hover:bg-white/5" href="/login">
-              Login
-            </Link>
-            <Link className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-black transition hover:bg-zinc-200" href="/signup">
-              Sign up
-            </Link>
-          </div>
-        </header>
+
 
         <section className="grid gap-10 py-16 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
           <div className="max-w-2xl">

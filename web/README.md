@@ -1,51 +1,104 @@
-# Mongo Auth Dashboard
+# Ai Sales Workflow management.s
 
-Simple Next.js auth starter with Mongoose, JWT sessions, hashed passwords, hashed OTP verification, and organization management.
 
-## Features
+## Problem Statement
 
-- Signup with name, email, password, and OTP
-- Login with email and password
-- JWT session cookie
-- Protected dashboard and profile pages
-- Organization CRUD with organizer/member roles
-- Email-bound invite links for members
-- Dynamic public contact forms and submission inbox
-- Google OAuth login and account creation
-- Score-based sales queue, agent rules, and reminders
-- Optional SMTP, Google Calendar, and Google Sheets sync
-- Mongoose-backed user records
-- Black and gray theme
+Build a multi-organization system where admins create one organization, invite members, manage forms, route submissions, and connect Google Mail, Calendar, and Sheets per organization.
 
-## Setup
+## Solution
 
-1. Copy `.env.example` to `.env.local`.
-2. Set `MONGODB_URI` and `JWT_SECRET`.
-3. Run `npm install` if dependencies are missing.
-4. Start the app with `npm run dev`.
+The app uses OTP-based signup, email/password login, Google OAuth login, role-based organization access, dynamic form workflows, and Google-backed automation for mail, calendar, and sheets.
 
-## Docker
+## Tech Stack
 
-Run the full stack with MongoDB and Redis:
+- Next.js 16 / React 19 / TypeScript
+- MongoDB + Mongoose
+- Redis for caching
+- Google OAuth, Gmail API, Calendar API, Sheets API
+- JWT auth, bcrypt, Groq agent routing
+- Docker + Docker Compose
 
-1. Set any required secrets in `docker-compose.yml` or via an override file.
-2. Run `docker compose up --build` from the repository root.
-3. Open `http://localhost:3000`.
+## Architecture
 
-## Environment
+- MVC-style structure: `app/` handles views and route entry points, `lib/` holds models/services, and `app/api/` acts as the REST controller layer.
+- DB connection is a singleton in `web/lib/mongoose.ts` using a shared global connection promise.
+- REST APIs are organized under `web/app/api/...` by feature: auth, organizations, members, invites, forms, submissions, stock, reminders, and public forms.
+- Error logging uses route-level `console.error` plus API error responses so auth and automation failures can be traced.
 
-- `MONGODB_URI`: MongoDB connection string
-- `JWT_SECRET`: Long random secret for signing auth tokens
-- `NEXT_PUBLIC_APP_URL`: Optional base URL for redirects
-- `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`: Google OAuth
-- `GROQ_API_KEY`, `GROQ_MODEL`: Agent routing model, defaults to `llama3-8b-8192`
-- `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`: Email delivery
-- `GOOGLE_CALENDAR_ID`, `GOOGLE_SERVICE_ACCOUNT_EMAIL`, `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY`: Calendar reminders
-- `GOOGLE_SHEETS_SHEET_ID`: Stock sheet sync target
-- `ADMIN_ALERT_EMAIL`: Optional fallback admin alert inbox
+## How to Run
+
+Local:
+
+1. Copy `web/.env.example` to `web/.env.local` and set the required values.
+2. Run `npm install` inside `web/`.
+3. Start the app with `npm run dev`.
+
+Docker:
+
+1. From the repository root, run `docker compose up --build`.
+2. Open `http://localhost:3000`.
+
+## Docker CI/CD (Auto Deploy)
+
+This repository now includes GitHub Actions workflow `/.github/workflows/docker-cicd.yml`.
+
+What it does:
+
+1. Validates the app on every pull request and main push (`lint` + `build`).
+2. Builds and pushes a Docker image to GHCR on main push.
+3. Deploys to your server over SSH by pulling the latest image and recreating only the `web` service.
+
+### Files Added for CI/CD
+
+- `/.github/workflows/docker-cicd.yml`
+- `/docker-compose.prod.yml`
+
+`docker-compose.prod.yml` overrides only the web image:
+
+- Uses `WEB_IMAGE` from workflow/server env
+- Forces `pull_policy: always`
+- Disables local `build` for deployment
+
+### Required GitHub Secrets
+
+Set these in your repository secrets before enabling auto deploy:
+
+- `DEPLOY_HOST`: server host/IP
+- `DEPLOY_USER`: SSH user
+- `DEPLOY_SSH_KEY`: private SSH key for deploy user
+- `DEPLOY_PORT`: optional SSH port (defaults to `22`)
+- `DEPLOY_PATH`: path on server where this repo exists (contains `docker-compose.yml`)
+- `DEPLOY_REGISTRY_USERNAME`: GHCR username (or service account)
+- `DEPLOY_REGISTRY_TOKEN`: GHCR token with package read access on the target package
+- `DEPLOY_ENV_FILE_B64`: optional base64-encoded content of `web/.env.local`
+
+If `DEPLOY_ENV_FILE_B64` is set, workflow writes it to `web/.env.local` on the server before deploy.
+
+### Server Prerequisites
+
+- Docker + Docker Compose plugin installed
+- Repo cloned on server at `DEPLOY_PATH`
+- `docker-compose.yml` and `docker-compose.prod.yml` present in that path
+
+### Why updates were not reflecting
+
+When deployment uses local build context, old containers/images can persist unless pull/recreate is enforced.
+The new pipeline fixes this by:
+
+- pushing immutable images to GHCR
+- pulling latest image on deploy
+- running `docker compose up -d --force-recreate` for the web container
+
+### Manual Deploy Command (same behavior as CI/CD)
+
+From server repo root:
+
+1. `echo "WEB_IMAGE=ghcr.io/<owner>/<repo>-web:latest" > .deploy.env`
+2. `docker compose --env-file .deploy.env -f docker-compose.yml -f docker-compose.prod.yml pull web`
+3. `docker compose --env-file .deploy.env -f docker-compose.yml -f docker-compose.prod.yml up -d --remove-orphans --force-recreate web`
 
 ## Notes
 
-- Passwords are hashed with bcrypt before saving.
-- OTP values are hashed with bcrypt before saving.
-- Users must verify their OTP once before logging in.
+- Passwords and OTP values are hashed before storage.
+- Google auth failures are surfaced back to the login page for easier debugging.
+- Organization settings provide the primary Google integration config, with env vars as fallbacks.

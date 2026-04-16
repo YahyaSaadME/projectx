@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { getFormBySlug, submitContactForm } from "@/lib/organizations";
-import { processSubmissionAutomation } from "@/lib/automation";
 
 type RouteParams = {
   params: Promise<{ slug: string }>;
@@ -33,12 +32,6 @@ export async function POST(request: Request, { params }: RouteParams) {
     email,
     answers,
   });
-
-  void processSubmissionAutomation({
-    organizationId: form.organizationId.toString(),
-    form,
-    submission,
-  }).catch(() => undefined);
 
   return NextResponse.json({ submission }, { status: 201 });
 }

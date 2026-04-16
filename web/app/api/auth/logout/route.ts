@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { authCookieName } from "@/lib/auth";
+import { getAppBaseUrl } from "@/lib/app-url";
 
 export async function POST(request: Request) {
-  const response = NextResponse.redirect(new URL("/", request.url));
+  const response = NextResponse.redirect(new URL("/", getAppBaseUrl(request)));
 
   response.cookies.set(authCookieName, "", {
     httpOnly: true,

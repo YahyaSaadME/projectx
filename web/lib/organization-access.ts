@@ -1,6 +1,10 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/session";
-import { getOrganizationById, getUserMembership, isOrganizationAdmin } from "@/lib/organizations";
+import {
+  getOrganizationById,
+  getUserMembership,
+  isOrganizationAdmin as checkOrganizationAdmin,
+} from "@/lib/organizations";
 
 export async function requireCurrentUser() {
   const user = await getCurrentUser();
@@ -31,11 +35,16 @@ export async function requireOrganizationMember(organizationId: string) {
 
 export async function requireOrganizationAdmin(organizationId: string) {
   const context = await requireOrganizationMember(organizationId);
-  const admin = await isOrganizationAdmin(organizationId, context.user.id);
+  const admin = await checkOrganizationAdmin(organizationId, context.user.id);
 
   if (!admin) {
     redirect(`/dashboard/organizations/${organizationId}`);
   }
 
   return context;
+}
+
+// Backward-compatible helper used by legacy routes/pages.
+export async function isOrganizationAdmin(userId: string, organizationId: string) {
+  return checkOrganizationAdmin(organizationId, userId);
 }

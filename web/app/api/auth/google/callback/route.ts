@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { authCookieName, signJwt } from "@/lib/auth";
+import { getAppBaseUrl } from "@/lib/app-url";
 import { createGoogleUser, findUserByEmail, findUserByGoogleId, linkGoogleAccount } from "@/lib/users";
 import { verifyGoogleCode } from "@/lib/google-oauth";
 
@@ -8,7 +9,8 @@ export async function GET(request: Request) {
   const code = url.searchParams.get("code");
 
   if (!code) {
-    return NextResponse.redirect(new URL("/login?error=google_missing_code", request.url));
+    console.error("Google callback missing code", { url: url.toString() });
+    return NextResponse.redirect(new URL("/login?error=google_missing_code", getAppBaseUrl(request)));
   }
 
   try {
@@ -24,12 +26,18 @@ export async function GET(request: Request) {
         email: profile.email,
         googleId: profile.googleId,
         avatarUrl: profile.avatarUrl,
+        googleAccessToken: profile.googleAccessToken,
+        googleRefreshToken: profile.googleRefreshToken,
+        googleTokenExpiry: profile.googleTokenExpiry,
       });
     } else if (!existingByGoogle) {
       const linkedUser = await linkGoogleAccount({
         email: profile.email,
         googleId: profile.googleId,
         avatarUrl: profile.avatarUrl,
+        googleAccessToken: profile.googleAccessToken,
+        googleRefreshToken: profile.googleRefreshToken,
+        googleTokenExpiry: profile.googleTokenExpiry,
       });
 
       if (linkedUser) {
@@ -42,7 +50,7 @@ export async function GET(request: Request) {
     }
 
     const token = signJwt({ sub: user._id.toString(), email: user.email, name: user.name });
-    const response = NextResponse.redirect(new URL("/dashboard", request.url));
+    const response = NextResponse.redirect(new URL("/dashboard", getAppBaseUrl(request)));
     response.cookies.set(authCookieName, token, {
       httpOnly: true,
       sameSite: "lax",
@@ -51,8 +59,13 @@ export async function GET(request: Request) {
       maxAge: 60 * 60 * 24 * 7,
     });
 
+    console.info("Google login success", { email: user.email });
     return response;
-  } catch {
-    return NextResponse.redirect(new URL("/login?error=google_failed", request.url));
+  } catch (error) {
+    console.error("Google login failed", error);
+    const detail = error instanceof Error ? error.message : "google_failed";
+    return NextResponse.redirect(
+      new URL(`/login?error=google_failed&detail=${encodeURIComponent(detail)}`, getAppBaseUrl(request)),
+    );
   }
 }

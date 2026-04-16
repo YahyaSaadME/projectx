@@ -28,9 +28,11 @@ export default function InviteAcceptButton({ token }: InviteAcceptButtonProps) {
       }
 
       setMessage("Invitation accepted.");
+
       if (payload.organizationId) {
         router.push(`/dashboard/organizations/${payload.organizationId}`);
       }
+
       router.refresh();
     } catch {
       setError("Invitation acceptance failed.");

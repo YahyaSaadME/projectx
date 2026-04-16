@@ -14,9 +14,11 @@ export default async function DashboardLayout({ children }: Readonly<{ children:
   const organizations = await listUserOrganizations(user.id);
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_#2b2b2b,_#111111_40%,_#080808_100%)] text-zinc-100 md:grid md:grid-cols-[280px_1fr]">
-      <DashboardSidebar user={user} organizations={organizations} />
-      <div className="min-w-0">{children}</div>
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_#2b2b2b,_#111111_40%,_#080808_100%)] text-zinc-400">
+      <div className="md:grid md:grid-cols-[320px_1fr]">
+        <DashboardSidebar user={user} organizations={organizations} />
+        <div className="min-w-0">{children}</div>
+      </div>
     </div>
   );
 }

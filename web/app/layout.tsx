@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Mongo Auth Dashboard",
-  description: "Simple Next.js auth starter with MongoDB, JWT, and profile pages",
+  title: "Project X",
+  description: "Project X workspace with authentication, public forms, and submission tracking",
 };
 
 export default function RootLayout({
@@ -28,7 +28,7 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-black text-zinc-100">
+      <body className="min-h-full flex  flex-col bg-black text-gray-700">
         <SiteNavbar />
         {children}
       </body>
