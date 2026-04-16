@@ -1,75 +1,43 @@
-# React + TypeScript + Vite
+# Mongo Auth Dashboard
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Simple Next.js auth starter with Mongoose, JWT sessions, hashed passwords, hashed OTP verification, and organization management.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Signup with name, email, password, and OTP
+- Login with email and password
+- JWT session cookie
+- Protected dashboard and profile pages
+- Organization CRUD with organizer/member roles
+- Email-bound invite links for members
+- Dynamic public contact forms and submission inbox
+- Google OAuth login and account creation
+- Score-based sales queue, agent rules, and reminders
+- Optional SMTP, Google Calendar, and Google Sheets sync
+- Mongoose-backed user records
+- Black and gray theme
 
-## React Compiler
+## Setup
 
-The React Compiler is enabled on this template. See [this documentation](https://react.dev/learn/react-compiler) for more information.
+1. Copy `.env.example` to `.env.local`.
+2. Set `MONGODB_URI` and `JWT_SECRET`.
+3. Run `npm install` if dependencies are missing.
+4. Start the app with `npm run dev`.
 
-Note: This will impact Vite dev & build performances.
+## Environment
 
-## Expanding the ESLint configuration
+- `MONGODB_URI`: MongoDB connection string
+- `JWT_SECRET`: Long random secret for signing auth tokens
+- `NEXT_PUBLIC_APP_URL`: Optional base URL for redirects
+- `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`: Google OAuth
+- `GROQ_API_KEY`, `GROQ_MODEL`: Agent routing model, defaults to `llama3-8b-8192`
+- `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`: Email delivery
+- `GOOGLE_CALENDAR_ID`, `GOOGLE_SERVICE_ACCOUNT_EMAIL`, `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY`: Calendar reminders
+- `GOOGLE_SHEETS_SHEET_ID`: Stock sheet sync target
+- `ADMIN_ALERT_EMAIL`: Optional fallback admin alert inbox
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Notes
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
-
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+- Passwords are hashed with bcrypt before saving.
+- OTP values are hashed with bcrypt before saving.
+- Users must verify their OTP once before logging in.
