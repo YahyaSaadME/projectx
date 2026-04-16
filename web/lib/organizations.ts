@@ -1,5 +1,6 @@
 import mongoose, { Schema, type Model, type Types } from "mongoose";
 import { connectMongoose } from "@/lib/mongoose";
+import { deleteRedisValue, readRedisValue, writeRedisValue } from "@/lib/redis";
 
 export type OrganizationRole = "admin" | "member";
 
@@ -364,12 +365,27 @@ export async function createInvite(input: {
     expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7),
   });
 
+  await deleteRedisValue(getInviteCacheKey(token));
+
   return invite.toObject() as InviteRecord;
 }
 
 export async function getInviteByToken(token: string) {
+  const cacheKey = getInviteCacheKey(token);
+  const cachedInvite = await readRedisValue<InviteRecord>(cacheKey);
+
+  if (cachedInvite) {
+    return cachedInvite;
+  }
+
   await connectMongoose();
-  return InviteModel.findOne({ token }).lean<InviteRecord>().exec();
+  const invite = await InviteModel.findOne({ token }).lean<InviteRecord>().exec();
+
+  if (invite) {
+    await writeRedisValue(cacheKey, invite, 60);
+  }
+
+  return invite;
 }
 
 export async function acceptInvite(token: string, userId: string, email: string) {
@@ -393,6 +409,7 @@ export async function acceptInvite(token: string, userId: string, email: string)
   invite.status = "accepted";
   invite.acceptedAt = new Date();
   await invite.save();
+  await deleteRedisValue(getInviteCacheKey(token));
   await addMembership({ organizationId: invite.organizationId.toString(), userId, role: "member" });
 
   return invite.toObject() as InviteRecord;
@@ -418,6 +435,8 @@ export async function createContactForm(input: {
     isActive: true,
   });
 
+  await deleteRedisValue(getFormCacheKey(form.slug));
+
   return form.toObject() as ContactFormRecord;
 }
 
@@ -426,6 +445,7 @@ export async function updateContactForm(
   input: { name: string; title: string; description: string; fields: FormField[]; isActive: boolean },
 ) {
   await connectMongoose();
+  const existing = await ContactFormModel.findById(formId).lean<ContactFormRecord>().exec();
   const updated = await ContactFormModel.findByIdAndUpdate(
     formId,
     {
@@ -442,15 +462,28 @@ export async function updateContactForm(
     .lean<ContactFormRecord>()
     .exec();
 
+  if (existing) {
+    await deleteRedisValue(getFormCacheKey(existing.slug));
+  }
+
+  if (updated) {
+    await deleteRedisValue(getFormCacheKey(updated.slug));
+  }
+
   return updated;
 }
 
 export async function deleteContactForm(formId: string) {
   await connectMongoose();
+  const existing = await ContactFormModel.findById(formId).lean<ContactFormRecord>().exec();
   await Promise.all([
     ContactFormModel.findByIdAndDelete(formId).exec(),
     SubmissionModel.deleteMany({ formId }).exec(),
   ]);
+
+  if (existing) {
+    await deleteRedisValue(getFormCacheKey(existing.slug));
+  }
 }
 
 export async function listOrganizationForms(organizationId: string) {
@@ -459,8 +492,21 @@ export async function listOrganizationForms(organizationId: string) {
 }
 
 export async function getFormBySlug(slug: string) {
+  const cacheKey = getFormCacheKey(slug);
+  const cachedForm = await readRedisValue<ContactFormRecord>(cacheKey);
+
+  if (cachedForm) {
+    return cachedForm;
+  }
+
   await connectMongoose();
-  return ContactFormModel.findOne({ slug, isActive: true }).lean<ContactFormRecord>().exec();
+  const form = await ContactFormModel.findOne({ slug, isActive: true }).lean<ContactFormRecord>().exec();
+
+  if (form) {
+    await writeRedisValue(cacheKey, form, 60);
+  }
+
+  return form;
 }
 
 export async function getFormById(formId: string) {
@@ -496,4 +542,12 @@ export async function listOrganizationSubmissions(organizationId: string) {
 export async function listFormSubmissions(formId: string) {
   await connectMongoose();
   return SubmissionModel.find({ formId }).sort({ submittedAt: -1 }).lean<SubmissionRecord[]>().exec();
+}
+
+function getInviteCacheKey(token: string) {
+  return `invite:${token}`;
+}
+
+function getFormCacheKey(slug: string) {
+  return `form:${slug}`;
 }

@@ -24,6 +24,14 @@ Simple Next.js auth starter with Mongoose, JWT sessions, hashed passwords, hashe
 3. Run `npm install` if dependencies are missing.
 4. Start the app with `npm run dev`.
 
+## Docker
+
+Run the full stack with MongoDB and Redis:
+
+1. Set any required secrets in `docker-compose.yml` or via an override file.
+2. Run `docker compose up --build` from the repository root.
+3. Open `http://localhost:3000`.
+
 ## Environment
 
 - `MONGODB_URI`: MongoDB connection string
