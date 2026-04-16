@@ -8,3 +8,15 @@ def get_database(request: Request) -> AsyncIOMotorDatabase:
 
 def get_items_collection(request: Request):
     return get_database(request)["items"]
+
+
+def get_users_collection(request: Request):
+    return get_database(request)["users"]
+
+
+def get_organizations_collection(request: Request):
+    return get_database(request)["organizations"]
+
+
+def get_invitations_collection(request: Request):
+    return get_database(request)["invitations"]
