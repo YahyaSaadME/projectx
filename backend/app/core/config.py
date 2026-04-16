@@ -23,6 +23,12 @@ class Settings(BaseSettings):
     smtp_password: str | None = None
     smtp_from_email: str = "no-reply@example.com"
     smtp_use_tls: bool = True
+    google_client_id: str | None = None
+    google_client_secret: str | None = None
+    google_redirect_uri: str | None = None
+    google_scopes: str = "openid email profile"
+    oauth_state_ttl_minutes: int = 10
+    frontend_app_url: str = "http://localhost:5173"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 

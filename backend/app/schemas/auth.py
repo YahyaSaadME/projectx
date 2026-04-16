@@ -70,3 +70,16 @@ class InvitePreviewResponse(BaseModel):
     organization_id: str
     expires_at: str
     status: str
+
+
+class GoogleOAuthStartResponse(BaseModel):
+    auth_url: str
+    state: str
+
+
+class GoogleOAuthCallbackResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    requires_organization_setup: bool = False
+    organization_id: str | None = None
+    role: str | None = None

@@ -17,6 +17,21 @@ async def create_invite(payload: CreateInviteRequest, user: dict = Depends(get_c
     return await service.create_invite(user, payload)
 
 
+@router.post("/{organization_id}/invite", response_model=InviteResponse)
+async def create_org_invite(organization_id: str, payload: CreateInviteRequest, user: dict = Depends(get_current_user), service: OrganizationService = Depends(get_organization_service)):
+    return await service.create_invite_for_organization(user, payload, organization_id)
+
+
+@router.get("/{organization_id}", response_model=OrganizationResponse)
+async def get_organization(organization_id: str, user: dict = Depends(get_current_user), service: OrganizationService = Depends(get_organization_service)):
+    return await service.get_organization(user, organization_id)
+
+
+@router.get("/{organization_id}/members")
+async def list_members(organization_id: str, user: dict = Depends(get_current_user), service: OrganizationService = Depends(get_organization_service)):
+    return await service.list_members(user, organization_id)
+
+
 @router.get("/invitations/{invite_token}", response_model=InvitePreviewResponse)
 async def preview_invite(invite_token: str, service: OrganizationService = Depends(get_organization_service)):
     return await service.preview_invite(invite_token)

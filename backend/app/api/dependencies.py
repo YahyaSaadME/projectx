@@ -6,10 +6,11 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from backend.app.core.config import get_settings
 from backend.app.core.security import decode_token
-from backend.app.db.mongo import get_items_collection
+from backend.app.db.mongo import get_form_versions_collection, get_forms_collection, get_items_collection
 from backend.app.db.mongo import get_invitations_collection, get_organizations_collection, get_users_collection
 from backend.app.db.redis import get_redis
 from backend.app.services.auth import AuthService
+from backend.app.services.forms import FormService
 from backend.app.services.items import ItemService
 from backend.app.services.organizations import OrganizationService
 
@@ -36,6 +37,10 @@ def get_organization_service(request: Request) -> OrganizationService:
         redis=get_redis(request),
         settings=get_settings(),
     )
+
+
+def get_form_service(request: Request) -> FormService:
+    return FormService(forms=get_forms_collection(request), versions=get_form_versions_collection(request))
 
 
 async def get_current_user(

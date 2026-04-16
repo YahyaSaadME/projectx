@@ -20,3 +20,11 @@ def get_organizations_collection(request: Request):
 
 def get_invitations_collection(request: Request):
     return get_database(request)["invitations"]
+
+
+def get_forms_collection(request: Request):
+    return get_database(request)["forms"]
+
+
+def get_form_versions_collection(request: Request):
+    return get_database(request)["form_versions"]

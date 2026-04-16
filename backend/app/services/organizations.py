@@ -50,7 +50,7 @@ class OrganizationService:
                 "$set": {
                     "organization_id": organization_id,
                     "created_organization_id": organization_id,
-                    "role": "admin",
+                    "role": "owner",
                     "updated_at": now,
                 }
             },
@@ -63,11 +63,15 @@ class OrganizationService:
         return self._serialize_organization(created)
 
     async def create_invite(self, user: dict, payload: CreateInviteRequest) -> dict:
-        organization_id = user.get("organization_id")
+        return await self.create_invite_for_organization(user=user, payload=payload, organization_id=user.get("organization_id"))
+
+    async def create_invite_for_organization(self, user: dict, payload: CreateInviteRequest, organization_id: str | None) -> dict:
         if not organization_id:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization access required")
-        if user.get("role") != "admin":
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only admins can create invites")
+        if user.get("role") not in {"admin", "owner"}:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only owners and admins can create invites")
+        if user.get("organization_id") and str(user["organization_id"]) != str(organization_id):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot invite people to another organization")
 
         existing_user = await self.users.find_one({"email": payload.email.lower()})
         if existing_user and existing_user.get("organization_id") and str(existing_user["organization_id"]) != str(organization_id):
@@ -118,6 +122,33 @@ class OrganizationService:
             "invite_url": invite_url,
             "expires_at": expires_at.isoformat(),
         }
+
+    async def get_organization(self, user: dict, organization_id: str) -> dict:
+        if not user.get("organization_id") or str(user["organization_id"]) != str(organization_id):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+
+        organization = await self.organizations.find_one({"_id": ObjectId(organization_id)})
+        if organization is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found")
+        return self._serialize_organization(organization)
+
+    async def list_members(self, user: dict, organization_id: str) -> list[dict]:
+        if not user.get("organization_id") or str(user["organization_id"]) != str(organization_id):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+
+        cursor = self.users.find({"organization_id": user["organization_id"]}).sort("created_at", 1)
+        members = []
+        async for member in cursor:
+            members.append(
+                {
+                    "id": str(member["_id"]),
+                    "email": member["email"],
+                    "full_name": member.get("full_name"),
+                    "role": member.get("role"),
+                    "is_active": member.get("is_active", True),
+                }
+            )
+        return members
 
     async def preview_invite(self, invite_token: str) -> dict:
         invite = await self._find_pending_invite_by_token(invite_token)
