@@ -51,7 +51,7 @@ export default function FormCardActions({ formId, initialActive }: FormCardActio
       <button className="rounded-full border border-white/10 px-4 py-2 text-xs text-zinc-300 transition hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-60" disabled={isSaving} type="button" onClick={handleToggle}>
         {isActive ? "Disable" : "Enable"}
       </button>
-      <button className="rounded-full border border-red-500/20 px-4 py-2 text-xs text-red-200 transition hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-60" disabled={isDeleting} type="button" onClick={handleDelete}>
+      <button className="rounded-full border border-red-500/20 bg-red-500/5 px-4 py-2 text-xs text-red-200 transition hover:bg-red-500/15 focus:outline-none focus:ring-2 focus:ring-red-500/30 disabled:cursor-not-allowed disabled:opacity-60" disabled={isDeleting} type="button" onClick={handleDelete}>
         {isDeleting ? "Deleting..." : "Delete"}
       </button>
     </div>
