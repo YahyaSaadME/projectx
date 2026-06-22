@@ -265,7 +265,7 @@ export default function MemberWarehouseManager({
                         placeholder="Quantity"
                       />
                       <button
-                        className="rounded-lg border border-red-500/30 px-3 py-2 text-xs text-red-200 transition hover:bg-red-500/10"
+                        className="rounded-lg border border-red-500/30 bg-red-500/5 px-3 py-2 text-xs text-red-200 transition hover:bg-red-500/15 focus:outline-none focus:ring-2 focus:ring-red-500/30"
                         type="button"
                         onClick={() => removeStockItem(member.userId, index)}
                       >
@@ -289,7 +289,7 @@ export default function MemberWarehouseManager({
                   Add product
                 </button>
                 <button
-                  className="rounded-xl border border-red-500/30 px-3 py-2 text-xs text-red-200 transition hover:bg-red-500/10"
+                  className="rounded-xl border border-red-500/30 bg-red-500/5 px-3 py-2 text-xs text-red-200 transition hover:bg-red-500/15 focus:outline-none focus:ring-2 focus:ring-red-500/30"
                   type="button"
                   onClick={() =>
                     setMemberState((current) =>

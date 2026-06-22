@@ -190,7 +190,7 @@ export default function FormBuilder({
                 Required
               </label>
               <button
-                className="inline-flex items-center justify-center rounded-xl border border-white/10 p-2 text-zinc-400 transition hover:bg-white/5 hover:text-red-400"
+                className="inline-flex items-center justify-center rounded-xl border border-red-500/30 bg-red-500/5 p-2 text-red-200 transition hover:bg-red-500/15 hover:text-red-50 focus:outline-none focus:ring-2 focus:ring-red-500/30"
                 type="button"
                 onClick={() => setFields((f) => f.filter((_, i) => i !== index))}
               >
